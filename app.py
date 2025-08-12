@@ -17,14 +17,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 默认API配置
-DEFAULT_API_CONFIG = {
-    'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings',
-    'api_key': '',
-    'model': 'text-embedding-v4',
-    'dimension': 1024
-}
-
 class RAGVisualizer:
     def __init__(self):
         if 'segments' not in st.session_state:
@@ -78,8 +70,8 @@ class RAGVisualizer:
 
     def call_embedding_api(self, text, api_config):
         """调用embedding API"""
-        if not api_config['api_key'].strip():
-            raise Exception('请先配置API Key')
+        if not all([api_config['base_url'], api_config['api_key'], api_config['model']]):
+            raise Exception('请完整配置API参数（Base URL、API Key、模型名称）')
         
         headers = {
             'Content-Type': 'application/json',
@@ -222,7 +214,8 @@ def main():
         
         api_base_url = st.text_input(
             "Base URL",
-            value=DEFAULT_API_CONFIG['base_url'],
+            value="",
+            placeholder="例如: https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings",
             help="Embedding API的基础URL地址"
         )
         
@@ -230,21 +223,23 @@ def main():
             "API Key",
             value="",
             type="password",
+            placeholder="请输入您的API密钥",
             help="您的API密钥"
         )
         
         api_model = st.text_input(
             "模型名称",
-            value=DEFAULT_API_CONFIG['model'],
+            value="",
+            placeholder="例如: text-embedding-v4",
             help="使用的embedding模型名称"
         )
         
         # 构建API配置
         api_config = {
-            'base_url': api_base_url,
-            'api_key': api_key,
-            'model': api_model,
-            'dimension': DEFAULT_API_CONFIG['dimension']
+            'base_url': api_base_url.strip(),
+            'api_key': api_key.strip(),
+            'model': api_model.strip(),
+            'dimension': 1024
         }
         
         st.divider()
@@ -279,10 +274,25 @@ def main():
         
         # 系统状态
         st.subheader("📊 系统状态")
-        if api_key.strip():
-            st.success("✅ API Key已配置")
+        
+        # API配置状态检查
+        api_configured = all([
+            api_config['base_url'],
+            api_config['api_key'],
+            api_config['model']
+        ])
+        
+        if api_configured:
+            st.success("✅ API配置完整")
         else:
-            st.warning("⚠️ 请配置API Key")
+            missing_items = []
+            if not api_config['base_url']:
+                missing_items.append("Base URL")
+            if not api_config['api_key']:
+                missing_items.append("API Key")
+            if not api_config['model']:
+                missing_items.append("模型名称")
+            st.warning(f"⚠️ 请配置: {', '.join(missing_items)}")
             
         if st.session_state.segments:
             st.success(f"✅ 已分段: {len(st.session_state.segments)} 个")
@@ -356,8 +366,8 @@ def main():
         st.header("3. 向量化与PCA降维可视化")
         
         if st.session_state.segments:
-            if not api_key.strip():
-                st.error("⚠️ 请先在侧边栏配置API Key")
+            if not api_configured:
+                st.error("⚠️ 请先在侧边栏完整配置API参数（Base URL、API Key、模型名称）")
             else:
                 col1, col2 = st.columns([1, 4])
                 with col1:
@@ -399,8 +409,8 @@ def main():
         st.header("4. 问题查询")
         
         if st.session_state.embeddings:
-            if not api_key.strip():
-                st.error("⚠️ 请先在侧边栏配置API Key")
+            if not api_configured:
+                st.error("⚠️ 请先在侧边栏完整配置API参数（Base URL、API Key、模型名称）")
             else:
                 query = st.text_input(
                     "输入您的问题",
