@@ -214,8 +214,7 @@ def main():
         
         api_base_url = st.text_input(
             "Base URL",
-            value="",
-            placeholder="例如: https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings",
+            value="https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings",
             help="Embedding API的基础URL地址"
         )
         
@@ -229,9 +228,17 @@ def main():
         
         api_model = st.text_input(
             "模型名称",
-            value="",
-            placeholder="例如: text-embedding-v4",
+            value="text-embedding-v4",
             help="使用的embedding模型名称"
+        )
+        
+        api_dimension = st.number_input(
+            "向量维度",
+            min_value=128,
+            max_value=4096,
+            value=1024,
+            step=1,
+            help="embedding向量的维度"
         )
         
         # 构建API配置
@@ -239,25 +246,28 @@ def main():
             'base_url': api_base_url.strip(),
             'api_key': api_key.strip(),
             'model': api_model.strip(),
-            'dimension': 1024
+            'dimension': api_dimension
         }
         
         st.divider()
         
         # 分段参数配置
         st.subheader("📝 分段参数")
-        chunk_size = st.selectbox(
+        chunk_size = st.slider(
             "分段长度",
-            options=[200, 500],
-            index=1,
-            help="选择文本分段的字符长度"
+            min_value=100,
+            max_value=500,
+            value=200,
+            step=10,
+            help="文本分段的字符长度"
         )
         
         overlap_percent = st.slider(
             "重叠度 (%)",
-            min_value=0,
-            max_value=100,
-            value=50,
+            min_value=5,
+            max_value=50,
+            value=10,
+            step=1,
             help="相邻分段之间的重叠百分比"
         )
         
