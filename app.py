@@ -45,26 +45,60 @@ class RAGVisualizer:
         st.session_state.query_pca = None
 
     def split_text(self, text, chunk_size, overlap_size):
-        """文本分段"""
+        """文本分段，优先在段落符号位置分段"""
         segments = []
         start = 0
         segment_id = 1
         
+        # 段落分隔符优先级（从高到低）
+        paragraph_separators = ['\n\n', '\n', '。', '！', '？', '；', '：', '，']
+        
         while start < len(text):
             end = min(start + chunk_size, len(text))
+            
+            # 如果不是最后一段，尝试在段落符号位置断开
+            if end < len(text):
+                best_break = end
+                best_priority = -1
+                
+                # 在合理范围内寻找最佳断点
+                search_start = max(start + chunk_size // 3, start + 50)  # 至少保证1/3长度
+                search_end = min(end + chunk_size // 4, len(text))       # 允许稍微超出
+                
+                for i in range(search_end, search_start - 1, -1):
+                    for priority, separator in enumerate(paragraph_separators):
+                        if text[i:i+len(separator)] == separator:
+                            if priority > best_priority or (priority == best_priority and i > best_break):
+                                best_break = i + len(separator)
+                                best_priority = priority
+                            break
+                    if best_priority >= 0:  # 找到段落符号就停止搜索
+                        break
+                
+                end = best_break
+            
             segment = {
                 'id': segment_id,
-                'content': text[start:end],
+                'content': text[start:end].strip(),
                 'start': start,
                 'end': end,
                 'length': end - start
             }
-            segments.append(segment)
-            segment_id += 1
+            
+            # 只添加非空分段
+            if segment['content']:
+                segments.append(segment)
+                segment_id += 1
             
             if end >= len(text):
                 break
-            start = end - overlap_size
+                
+            # 计算下一段的起始位置，考虑重叠
+            start = max(start + 1, end - overlap_size)
+            
+            # 避免无限循环
+            if start >= end:
+                start = end
         
         return segments
 
