@@ -7,11 +7,11 @@ class RAGVisualization {
         this.similarityMatrix = null;
         this.pcaTransform = null;
         
-        // API配置
+        // API配置 - 需要用户自行配置
         this.apiConfig = {
-            baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings',
-            apiKey: 'sk-bbc235785f4240e79d35e73be6b1ae6b',
-            model: 'text-embedding-v4',
+            baseUrl: '',
+            apiKey: '',
+            model: '',
             dimension: 1024
         };
         
