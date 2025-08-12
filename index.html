@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG可视化教学系统</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ml-matrix@6.10.4/lib/bundle.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RAG可视化教学系统</h1>
+            <p>体验文本分段、向量化、PCA降维和相似度计算</p>
+        </header>
+
+        <div class="main-content">
+            <!-- 文本输入区域 -->
+            <div class="section">
+                <h2>1. 文本输入</h2>
+                <textarea id="inputText" placeholder="请输入长文本内容...">
+人工智能（Artificial Intelligence，AI）是计算机科学的一个分支，它企图了解智能的实质，并生产出一种新的能以人类智能相似的方式做出反应的智能机器。该领域的研究包括机器人、语言识别、图像识别、自然语言处理和专家系统等。
+
+机器学习是人工智能的一个重要分支，它是一种通过算法使机器能够从数据中学习并做出决策或预测的技术。机器学习算法通过训练数据来识别模式，然后使用这些模式来对新数据进行预测或分类。
+
+深度学习是机器学习的一个子集，它使用人工神经网络来模拟人脑的工作方式。深度学习在图像识别、语音识别、自然语言处理等领域取得了突破性进展。神经网络由多个层组成，每一层都包含多个神经元，这些神经元通过权重连接。
+
+自然语言处理（Natural Language Processing，NLP）是人工智能和语言学领域的分支学科。它研究能实现人与计算机之间用自然语言进行有效通信的各种理论和方法。NLP是计算机科学领域与人工智能领域中的一个重要方向。
+
+计算机视觉是一门研究如何使机器"看"的科学，更进一步的说，就是指用摄影机和电脑代替人眼对目标进行识别、跟踪和测量等机器视觉，并进一步做图形处理，使电脑处理成为更适合人眼观察或传送给仪器检测的图像。
+
+强化学习是机器学习中的一个领域，强调如何基于环境而行动，以取得最大化的预期利益。强化学习是除了监督学习和无监督学习之外的第三种基本的机器学习方法。与监督学习和无监督学习不同，强化学习不需要出现正确的输入/输出对，也不需要精确校正次优化的行为。
+                </textarea>
+                <div class="controls">
+                    <label>分段长度: 
+                        <select id="chunkSize">
+                            <option value="200">200字符</option>
+                            <option value="500" selected>500字符</option>
+                        </select>
+                    </label>
+                    <label>重叠度: 
+                        <input type="number" id="overlap" value="50" min="0" max="100">%
+                    </label>
+                    <button id="processText">处理文本</button>
+                </div>
+            </div>
+
+            <!-- 分段结果 -->
+            <div class="section">
+                <h2>2. 文本分段结果</h2>
+                <div id="segments" class="segments-container"></div>
+            </div>
+
+            <!-- 向量化和PCA可视化 -->
+            <div class="section">
+                <h2>3. 向量化与PCA降维可视化</h2>
+                <div class="visualization-container">
+                    <div id="pcaPlot" class="plot-container"></div>
+                    <div class="plot-controls">
+                        <button id="generateEmbeddings">生成向量并可视化</button>
+                        <div class="status" id="embeddingStatus"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 问题查询 -->
+            <div class="section">
+                <h2>4. 问题查询</h2>
+                <div class="query-container">
+                    <input type="text" id="queryInput" placeholder="输入您的问题...">
+                    <button id="queryButton">查询</button>
+                </div>
+                <div id="queryResult" class="query-result"></div>
+            </div>
+
+            <!-- 相似度矩阵 -->
+            <div class="section">
+                <h2>5. 分段相似度矩阵</h2>
+                <div id="similarityMatrix" class="matrix-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
