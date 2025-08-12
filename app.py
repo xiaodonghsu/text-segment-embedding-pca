@@ -17,10 +17,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# API配置
-API_CONFIG = {
+# 默认API配置
+DEFAULT_API_CONFIG = {
     'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings',
-    'api_key': 'sk-bbc235785f4240e79d35e73be6b1ae6b',
+    'api_key': '',
     'model': 'text-embedding-v4',
     'dimension': 1024
 }
@@ -41,6 +41,16 @@ class RAGVisualizer:
             st.session_state.query_embedding = None
         if 'query_pca' not in st.session_state:
             st.session_state.query_pca = None
+
+    def clear_all_data(self):
+        """清除所有数据"""
+        st.session_state.segments = []
+        st.session_state.embeddings = []
+        st.session_state.pca_data = None
+        st.session_state.pca_model = None
+        st.session_state.similarity_matrix = None
+        st.session_state.query_embedding = None
+        st.session_state.query_pca = None
 
     def split_text(self, text, chunk_size, overlap_size):
         """文本分段"""
@@ -66,20 +76,23 @@ class RAGVisualizer:
         
         return segments
 
-    def call_embedding_api(self, text):
+    def call_embedding_api(self, text, api_config):
         """调用embedding API"""
+        if not api_config['api_key'].strip():
+            raise Exception('请先配置API Key')
+        
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {API_CONFIG["api_key"]}'
+            'Authorization': f'Bearer {api_config["api_key"]}'
         }
         
         data = {
-            'model': API_CONFIG['model'],
+            'model': api_config['model'],
             'input': text,
             'encoding_format': 'float'
         }
         
-        response = requests.post(API_CONFIG['base_url'], headers=headers, json=data)
+        response = requests.post(api_config['base_url'], headers=headers, json=data)
         
         if response.status_code != 200:
             raise Exception(f'API调用失败: {response.status_code} {response.text}')
@@ -91,7 +104,7 @@ class RAGVisualizer:
         
         return result['data'][0]['embedding']
 
-    def generate_embeddings(self, segments):
+    def generate_embeddings(self, segments, api_config):
         """批量生成embeddings"""
         embeddings = []
         progress_bar = st.progress(0)
@@ -101,7 +114,7 @@ class RAGVisualizer:
             status_text.text(f'正在处理分段 {i + 1}/{len(segments)}...')
             
             try:
-                embedding = self.call_embedding_api(segment['content'])
+                embedding = self.call_embedding_api(segment['content'], api_config)
                 embeddings.append(embedding)
                 progress_bar.progress((i + 1) / len(segments))
                 time.sleep(0.1)  # 避免API限流
@@ -202,8 +215,42 @@ def main():
     
     # 侧边栏配置
     with st.sidebar:
-        st.header("⚙️ 参数配置")
+        st.header("⚙️ 系统配置")
         
+        # API配置区域
+        st.subheader("🔑 Embedding API配置")
+        
+        api_base_url = st.text_input(
+            "Base URL",
+            value=DEFAULT_API_CONFIG['base_url'],
+            help="Embedding API的基础URL地址"
+        )
+        
+        api_key = st.text_input(
+            "API Key",
+            value="",
+            type="password",
+            help="您的API密钥"
+        )
+        
+        api_model = st.text_input(
+            "模型名称",
+            value=DEFAULT_API_CONFIG['model'],
+            help="使用的embedding模型名称"
+        )
+        
+        # 构建API配置
+        api_config = {
+            'base_url': api_base_url,
+            'api_key': api_key,
+            'model': api_model,
+            'dimension': DEFAULT_API_CONFIG['dimension']
+        }
+        
+        st.divider()
+        
+        # 分段参数配置
+        st.subheader("📝 分段参数")
         chunk_size = st.selectbox(
             "分段长度",
             options=[200, 500],
@@ -220,7 +267,23 @@ def main():
         )
         
         st.divider()
-        st.markdown("### 📊 系统状态")
+        
+        # 数据管理
+        st.subheader("🗂️ 数据管理")
+        if st.button("🗑️ 清除所有数据", type="secondary"):
+            visualizer.clear_all_data()
+            st.success("✅ 所有数据已清除！")
+            st.rerun()
+        
+        st.divider()
+        
+        # 系统状态
+        st.subheader("📊 系统状态")
+        if api_key.strip():
+            st.success("✅ API Key已配置")
+        else:
+            st.warning("⚠️ 请配置API Key")
+            
         if st.session_state.segments:
             st.success(f"✅ 已分段: {len(st.session_state.segments)} 个")
         if st.session_state.embeddings:
@@ -264,6 +327,7 @@ def main():
                     segments = visualizer.split_text(input_text.strip(), chunk_size, overlap_size)
                     
                     st.session_state.segments = segments
+                    # 清除之前的向量化数据
                     st.session_state.embeddings = []
                     st.session_state.pca_data = None
                     st.session_state.pca_model = None
@@ -292,39 +356,42 @@ def main():
         st.header("3. 向量化与PCA降维可视化")
         
         if st.session_state.segments:
-            col1, col2 = st.columns([1, 4])
-            with col1:
-                if st.button("🚀 生成向量并可视化", type="primary"):
-                    with st.spinner("正在调用embedding API..."):
-                        embeddings = visualizer.generate_embeddings(st.session_state.segments)
-                        
-                        if embeddings:
-                            st.session_state.embeddings = embeddings
+            if not api_key.strip():
+                st.error("⚠️ 请先在侧边栏配置API Key")
+            else:
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    if st.button("🚀 生成向量并可视化", type="primary"):
+                        with st.spinner("正在调用embedding API..."):
+                            embeddings = visualizer.generate_embeddings(st.session_state.segments, api_config)
                             
-                            # 执行PCA降维
-                            pca_data, pca_model = visualizer.perform_pca(embeddings)
-                            st.session_state.pca_data = pca_data
-                            st.session_state.pca_model = pca_model
-                            
-                            # 计算相似度矩阵
-                            similarity_matrix = visualizer.calculate_similarity_matrix(embeddings)
-                            st.session_state.similarity_matrix = similarity_matrix
-                            
-                            st.success("✅ 向量生成和PCA降维完成！")
-                            st.rerun()
-            
-            if st.session_state.pca_data is not None:
-                st.subheader("📊 PCA降维可视化")
-                fig = visualizer.create_pca_plot(
-                    st.session_state.pca_data, 
-                    st.session_state.segments,
-                    st.session_state.query_pca
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                            if embeddings:
+                                st.session_state.embeddings = embeddings
+                                
+                                # 执行PCA降维
+                                pca_data, pca_model = visualizer.perform_pca(embeddings)
+                                st.session_state.pca_data = pca_data
+                                st.session_state.pca_model = pca_model
+                                
+                                # 计算相似度矩阵
+                                similarity_matrix = visualizer.calculate_similarity_matrix(embeddings)
+                                st.session_state.similarity_matrix = similarity_matrix
+                                
+                                st.success("✅ 向量生成和PCA降维完成！")
+                                st.rerun()
                 
-                # 显示PCA解释方差比
-                explained_variance = st.session_state.pca_model.explained_variance_ratio_
-                st.info(f"📈 PCA解释方差比: PC1={explained_variance[0]:.3f}, PC2={explained_variance[1]:.3f}")
+                if st.session_state.pca_data is not None:
+                    st.subheader("📊 PCA降维可视化")
+                    fig = visualizer.create_pca_plot(
+                        st.session_state.pca_data, 
+                        st.session_state.segments,
+                        st.session_state.query_pca
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # 显示PCA解释方差比
+                    explained_variance = st.session_state.pca_model.explained_variance_ratio_
+                    st.info(f"📈 PCA解释方差比: PC1={explained_variance[0]:.3f}, PC2={explained_variance[1]:.3f}")
         else:
             st.warning("请先在「文本输入」标签页处理文本")
     
@@ -332,61 +399,64 @@ def main():
         st.header("4. 问题查询")
         
         if st.session_state.embeddings:
-            query = st.text_input(
-                "输入您的问题",
-                placeholder="例如：什么是深度学习？",
-                help="输入问题，系统会找到最相关的文本分段"
-            )
-            
-            if st.button("🔍 查询", type="primary") and query.strip():
-                with st.spinner("正在处理查询..."):
-                    try:
-                        # 生成查询向量
-                        query_embedding = visualizer.call_embedding_api(query.strip())
-                        st.session_state.query_embedding = query_embedding
-                        
-                        # PCA投影
-                        query_pca = st.session_state.pca_model.transform([query_embedding])[0]
-                        st.session_state.query_pca = query_pca
-                        
-                        # 计算相似度
-                        similarities = cosine_similarity([query_embedding], st.session_state.embeddings)[0]
-                        
-                        # 排序并显示结果
-                        results = []
-                        for i, sim in enumerate(similarities):
-                            results.append({
-                                'segment_id': st.session_state.segments[i]['id'],
-                                'similarity': sim,
-                                'content': st.session_state.segments[i]['content']
-                            })
-                        
-                        results.sort(key=lambda x: x['similarity'], reverse=True)
-                        
-                        st.success("✅ 查询完成！")
-                        
-                        # 显示查询结果
-                        st.subheader(f"🎯 查询问题：{query}")
-                        st.subheader("📋 最相关的文本分段：")
-                        
-                        for i, result in enumerate(results[:3]):
-                            similarity_percent = result['similarity'] * 100
+            if not api_key.strip():
+                st.error("⚠️ 请先在侧边栏配置API Key")
+            else:
+                query = st.text_input(
+                    "输入您的问题",
+                    placeholder="例如：什么是深度学习？",
+                    help="输入问题，系统会找到最相关的文本分段"
+                )
+                
+                if st.button("🔍 查询", type="primary") and query.strip():
+                    with st.spinner("正在处理查询..."):
+                        try:
+                            # 生成查询向量
+                            query_embedding = visualizer.call_embedding_api(query.strip(), api_config)
+                            st.session_state.query_embedding = query_embedding
                             
-                            if i == 0:
-                                st.success(f"🥇 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
-                            elif i == 1:
-                                st.info(f"🥈 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
-                            else:
-                                st.warning(f"🥉 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
+                            # PCA投影
+                            query_pca = st.session_state.pca_model.transform([query_embedding])[0]
+                            st.session_state.query_pca = query_pca
                             
-                            content_preview = result['content'][:200] + "..." if len(result['content']) > 200 else result['content']
-                            st.write(content_preview)
-                            st.divider()
-                        
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"查询处理失败: {str(e)}")
+                            # 计算相似度
+                            similarities = cosine_similarity([query_embedding], st.session_state.embeddings)[0]
+                            
+                            # 排序并显示结果
+                            results = []
+                            for i, sim in enumerate(similarities):
+                                results.append({
+                                    'segment_id': st.session_state.segments[i]['id'],
+                                    'similarity': sim,
+                                    'content': st.session_state.segments[i]['content']
+                                })
+                            
+                            results.sort(key=lambda x: x['similarity'], reverse=True)
+                            
+                            st.success("✅ 查询完成！")
+                            
+                            # 显示查询结果
+                            st.subheader(f"🎯 查询问题：{query}")
+                            st.subheader("📋 最相关的文本分段：")
+                            
+                            for i, result in enumerate(results[:3]):
+                                similarity_percent = result['similarity'] * 100
+                                
+                                if i == 0:
+                                    st.success(f"🥇 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
+                                elif i == 1:
+                                    st.info(f"🥈 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
+                                else:
+                                    st.warning(f"🥉 **分段 {result['segment_id']}** (相似度: {similarity_percent:.1f}%)")
+                                
+                                content_preview = result['content'][:200] + "..." if len(result['content']) > 200 else result['content']
+                                st.write(content_preview)
+                                st.divider()
+                            
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"查询处理失败: {str(e)}")
         else:
             st.warning("请先在「向量可视化」标签页生成向量")
     

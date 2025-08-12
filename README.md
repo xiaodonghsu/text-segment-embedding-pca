@@ -72,15 +72,23 @@ streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 ## 📝 配置说明
 
 ### API配置
-在 `app.py` 中修改API配置：
-```python
-API_CONFIG = {
-    'base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings',
-    'api_key': 'your-api-key-here',  # 替换为您的API密钥
-    'model': 'text-embedding-v4',
-    'dimension': 1024
-}
-```
+系统支持在侧边栏动态配置Embedding API：
+
+1. **Base URL**: 设置embedding API的基础URL地址
+   - 默认：`https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings`
+   - 支持其他兼容OpenAI格式的embedding API
+
+2. **API Key**: 输入您的API密钥
+   - 必填项，系统会验证是否已配置
+   - 使用密码输入框保护隐私
+
+3. **模型名称**: 指定使用的embedding模型
+   - 默认：`text-embedding-v4`
+   - 可根据API提供商调整
+
+### 数据管理
+- **清除数据**: 一键清除所有处理过的数据
+- **状态监控**: 实时显示系统处理状态
 
 ### 参数调整
 - **分段长度**: 200或500字符
